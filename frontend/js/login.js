@@ -35,7 +35,9 @@ function aplicarPerfil() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('login.js cargado');
   aplicarPerfil();
+  console.log('tema actual:', document.body.dataset.tema);
 
   const temaColor = document.getElementById('temaColor');
   const avatarSelect = document.getElementById('avatarSelect');
@@ -46,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
       perfil.tema = e.target.value;
       guardarPerfil(perfil.tema, perfil.avatar);
       aplicarPerfil();
+      console.log('tema cambiado a:', document.body.dataset.tema);
     });
   }
 
@@ -55,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
       perfil.avatar = e.target.value;
       guardarPerfil(perfil.tema, perfil.avatar);
       aplicarPerfil();
+      console.log('avatar cambiado a:', perfil.avatar);
     });
   }
 
