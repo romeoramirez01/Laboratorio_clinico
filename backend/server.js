@@ -11,8 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 //Ruta absoluta para el logo en el PDF
-// Después de definir uploadsPath, agrega un console.log
-const uploadsPath = 'C:\\Users\\Martrinez\\Desktop\\S.D_lab\\laboratorio-clinico\\uploads';
+const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/prueba', express.static(uploadsPath));
 console.log('SIRVIENDO ARCHIVOS ESTÁTICOS DESDE:', uploadsPath);
 app.use('/uploads', express.static(uploadsPath));

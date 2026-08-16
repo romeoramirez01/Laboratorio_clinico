@@ -1,23 +1,15 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-//Forzar contraseña correcta
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'laboratorio_clinico',
-    password: '12345',  
-    port: 5432,
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_DATABASE || 'laboratorio_clinico',
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT || 5432,
 });
 
-//Mostrar configuración para depuración
-console.log('Configuración de BD:', {
-    user: 'postgres',
-    host: 'localhost',
-    database: 'laboratorio_clinico',
-    password: '12345 (usando valor fijo)',
-    port: 5432
-});
+
 
 //Crear tablas
 const createTables = async () => {
