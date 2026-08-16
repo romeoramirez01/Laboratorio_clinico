@@ -1882,14 +1882,8 @@ input[type="date"]:focus {
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /*ESTILOS COMUNES PARA ADMIN, DOCTOR Y PACIENTE*/
@@ -2450,7 +2444,7 @@ body, .navbar-brand, #logoutBtn, .tab-btn, .card h3, .card-title {
 
 /* Formulario dentro del modal */
 .modal-content form {
-    padding: 25px 30px 30px 30px;
+    padding: 25px 30px 30px;
     background: white;
     border-radius: 0 0 16px 16px;
 }

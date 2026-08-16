@@ -8,11 +8,41 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body>
+<body data-tema="turquesa">
   <div class="login-container">
     <div class="login-card">
-      <h2>Sistema de Gestión de Pacientes</h2>
-      <h3>Laboratorio Clínico</h3>
+      <div class="card-header">
+        <div id="avatarActual" class="avatar-display">🐼</div>
+        <h2>Sistema de Gestión de</h2>
+        <h3>Laboratorio Clínico</h3>
+      </div>
+
+      <div class="perfil-config">
+        <div class="form-group compact">
+          <label for="temaColor">Tema</label>
+          <select id="temaColor">
+            <option value="turquesa">Turquesa</option>
+            <option value="azul">Azul</option>
+            <option value="morado">Morado</option>
+            <option value="naranja">Naranja</option>
+            <option value="oscuro">Oscuro</option>
+          </select>
+        </div>
+
+        <div class="form-group compact">
+          <label for="avatarSelect">Avatar</label>
+          <select id="avatarSelect">
+            <option value="🐼">🐼</option>
+            <option value="😺">😺</option>
+            <option value="♞">♞</option>
+            <option value="🦊">🦊</option>
+            <option value="👹">👹</option>
+            <option value="☯️">☯️</option>
+            <option value="🦁">🦁</option>
+          </select>
+        </div>
+      </div>
+
       <form id="loginForm">
         <div class="form-group">
           <label for="email">Correo Electrónico</label>
