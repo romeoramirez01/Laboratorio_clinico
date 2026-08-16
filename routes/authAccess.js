@@ -1,13 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const router = express.Router();
-const express = require('express');
-const router = express.Router();
+const pool = require('../backend/database');
 
-// Importa el pool de conexión según la ruta donde tengas tu archivo de base de datos
-// (Ajusta la ruta '../config/db' o '../db' según el nombre real de tu archivo de conexión)
-const pool = require('../config/db');
+const JWT_SECRET = process.env.JWT_SECRET || 'laboratorio-secret-dev';
 
 //Registro de usuario
 router.post('/registro', async (req, res) => {
@@ -23,22 +21,42 @@ router.post('/registro', async (req, res) => {
       rol
     } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!dui || !nombres || !apellidos || !fecha_nacimiento || !telefono || !email || !password) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
 
-    await Usuario.create({
-      dui,
-      nombres,
-      apellidos,
-      fecha_nacimiento,
-      telefono,
-      email: String(email).trim().toLowerCase(),
-      password: hashedPassword,
-      rol
-    });
+    const emailNormalizado = String(email).trim().toLowerCase();
 
-    return res.status(201).json({ message: 'Usuario creado' });
+    const existe = await pool.query(
+      'SELECT id FROM usuarios WHERE email = $1',
+      [emailNormalizado]
+    );
+
+    if (existe.rows.length > 0) {
+      return res.status(409).json({ error: 'El correo ya está registrado' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      `INSERT INTO usuarios (
+        dui, nombres, apellidos, fecha_nacimiento, telefono, email, password, rol
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        dui,
+        nombres,
+        apellidos,
+        fecha_nacimiento,
+        telefono,
+        emailNormalizado,
+        passwordHash,
+        rol || 'paciente'
+      ]
+    );
+
+    return res.status(201).json({ message: 'Usuario creado correctamente' });
   } catch (error) {
-    console.error(error);
+    console.error('ERROR REGISTRO:', error);
     return res.status(500).json({ error: 'Error al registrar usuario' });
   }
 });
@@ -48,36 +66,40 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email y contraseña son requeridos' });
+    }
 
-    const user = await pool.query('SELECT * FROM usuarios WHERE email = $1', [normalizedEmail]);
+    const emailNormalizado = String(email).trim().toLowerCase();
 
-    console.log('LOGIN ATTEMPT:', { normalizedEmail, password });
-    console.log('USER FOUND:', user);
+    const result = await pool.query(
+      'SELECT * FROM usuarios WHERE email = $1',
+      [emailNormalizado]
+    );
 
-    if (!user.rows.length) {
+    if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    const match = await bcrypt.compare(password, user.rows[0].password);
-    console.log('PASSWORD MATCH:', match);
+    const usuario = result.rows[0];
+    const coincide = await bcrypt.compare(password, usuario.password);
 
-    if (!match) {
+    if (!coincide) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
     const token = jwt.sign(
-      { id: user.rows[0].id, email: user.rows[0].email, rol: user.rows[0].rol },
-      SECRET_KEY,
-      { expiresIn: '24h' }
+      { id: usuario.id, email: usuario.email, rol: usuario.rol },
+      JWT_SECRET,
+      { expiresIn: '8h' }
     );
 
     return res.json({
       token,
       usuario: {
-        id: user.rows[0].id,
-        email: user.rows[0].email,
-        rol: user.rows[0].rol
+        id: usuario.id,
+        email: usuario.email,
+        rol: usuario.rol
       }
     });
   } catch (error) {
@@ -88,50 +110,65 @@ router.post('/login', async (req, res) => {
 
 //Recuperar contraseña
 router.post('/recuperar-password', async (req, res) => {
-  const { email } = req.body;
-  
   try {
-    const user = await pool.query('SELECT id, nombres FROM usuarios WHERE email = $1', [email]);
-        if (user.rows.length === 0) {
-            return res.status(404).json({ error: 'Email no registrado' });
-        }
-        // Generar token único y expiración (1 hora)
-        const token = crypto.randomBytes(32).toString('hex');
-        const expires = new Date(Date.now() + 3600000); // 1 hora
-        await pool.query(
-            'UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE email = $3',
-            [token, expires, email]
-        );
-        // Enviar correo
-        await enviarCorreoRecuperacion(email, user.rows[0].nombres, token);
-        res.json({ message: 'Se han enviado instrucciones a tu correo electrónico' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al procesar la solicitud' });
+    const { email } = req.body;
+    const emailNormalizado = String(email).trim().toLowerCase();
+
+    const result = await pool.query(
+      'SELECT id, nombres, email FROM usuarios WHERE email = $1',
+      [emailNormalizado]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Correo no registrado' });
     }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 3600000);
+
+    await pool.query(
+      'UPDATE usuarios SET reset_token = $1, reset_token_expira = $2 WHERE id = $3',
+      [token, expires, result.rows[0].id]
+    );
+
+    return res.json({
+      message: 'Se ha enviado un correo de recuperación'
+    });
+  } catch (error) {
+    console.error('ERROR RECUPERAR:', error);
+    return res.status(500).json({ error: 'Error del servidor' });
+  }
 });
 
 router.post('/reset-password', async (req, res) => {
+  try {
     const { token, newPassword } = req.body;
-    try {
-        const user = await pool.query(
-            'SELECT id FROM usuarios WHERE reset_token = $1 AND reset_expires > NOW()',
-            [token]
-        );
-        if (user.rows.length === 0) {
-            return res.status(400).json({ error: 'Token inválido o expirado' });
-        }
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await pool.query(
-            'UPDATE usuarios SET password = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2',
-            [hashedPassword, user.rows[0].id]
-        );
-        res.json({ message: 'Contraseña actualizada exitosamente' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al restablecer contraseña' });
-    }
-});
 
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token y nueva contraseña requeridos' });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM usuarios WHERE reset_token = $1 AND reset_token_expira > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Token inválido o expirado' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      'UPDATE usuarios SET password = $1, reset_token = NULL, reset_token_expira = NULL WHERE id = $2',
+      [passwordHash, result.rows[0].id]
+    );
+
+    return res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('ERROR RESET:', error);
+    return res.status(500).json({ error: 'Error del servidor' });
+  }
+});
 
 module.exports = router;

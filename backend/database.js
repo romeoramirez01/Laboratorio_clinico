@@ -1,22 +1,15 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+const connectionString = process.env.DATABASE_URL;
+
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_DATABASE || 'laboratorio_clinico',
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT || 5432,
-  ssl: true,
+  connectionString,
+  ssl: connectionString ? { rejectUnauthorized: false } : false
 });
 
-
-
-//Crear tablas
 const createTables = async () => {
   const queries = [
-
-    // Tabla de usuarios
     `CREATE TABLE IF NOT EXISTS usuarios (
       id SERIAL PRIMARY KEY,
       dui VARCHAR(10) UNIQUE NOT NULL,
@@ -27,10 +20,10 @@ const createTables = async () => {
       email VARCHAR(100) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL,
       rol VARCHAR(20) DEFAULT 'paciente',
+      reset_token VARCHAR(255),
+      reset_token_expira TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    
-    // Tabla de citas
     `CREATE TABLE IF NOT EXISTS citas (
       id SERIAL PRIMARY KEY,
       paciente_id INTEGER REFERENCES usuarios(id),
@@ -40,8 +33,6 @@ const createTables = async () => {
       estado VARCHAR(20) DEFAULT 'pendiente',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    
-    // Tabla de catalogo de examenes
     `CREATE TABLE IF NOT EXISTS catalogo_examenes (
       id SERIAL PRIMARY KEY,
       nombre VARCHAR(100) NOT NULL,
@@ -49,8 +40,6 @@ const createTables = async () => {
       tiempo_entrega VARCHAR(50) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    
-    // Tabla de solicitud de examenes
     `CREATE TABLE IF NOT EXISTS solicitud_examenes (
       id SERIAL PRIMARY KEY,
       paciente_id INTEGER REFERENCES usuarios(id),
@@ -60,8 +49,6 @@ const createTables = async () => {
       resultado TEXT,
       archivo_pdf VARCHAR(255)
     )`,
-    
-    // Tabla de signos vitales
     `CREATE TABLE IF NOT EXISTS signos_vitales (
       id SERIAL PRIMARY KEY,
       paciente_id INTEGER REFERENCES usuarios(id),
@@ -73,8 +60,6 @@ const createTables = async () => {
       observaciones TEXT,
       fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    
-    // Tabla de historial clínico
     `CREATE TABLE IF NOT EXISTS historial_clinico (
       id SERIAL PRIMARY KEY,
       paciente_id INTEGER REFERENCES usuarios(id),
@@ -85,8 +70,6 @@ const createTables = async () => {
       factores_empeoran TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    
-    // Tabla de contactos de emergencia
     `CREATE TABLE IF NOT EXISTS contactos_emergencia (
       id SERIAL PRIMARY KEY,
       paciente_id INTEGER REFERENCES usuarios(id),
@@ -95,7 +78,7 @@ const createTables = async () => {
       relacion VARCHAR(50)
     )`
   ];
-  
+
   for (const query of queries) {
     try {
       await pool.query(query);
@@ -106,6 +89,8 @@ const createTables = async () => {
   }
 };
 
-createTables();
+createTables().catch((err) => {
+  console.error('Error inicializando base de datos:', err);
+});
 
 module.exports = pool;
