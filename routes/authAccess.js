@@ -2,6 +2,12 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
+const express = require('express');
+const router = express.Router();
+
+// Importa el pool de conexión según la ruta donde tengas tu archivo de base de datos
+// (Ajusta la ruta '../config/db' o '../db' según el nombre real de tu archivo de conexión)
+const pool = require('../config/db');
 
 //Registro de usuario
 router.post('/registro', async (req, res) => {
