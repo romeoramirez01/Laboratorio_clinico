@@ -1,99 +1,82 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const { enviarCorreoRecuperacion } = require('../backend/services/emailService');
 const jwt = require('jsonwebtoken');
-const pool = require('../backend/database');
-const { SECRET_KEY } = require('../middleware/auth');
-const { enviarCorreoRegistro } = require('../backend/services/emailService');
-
 const router = express.Router();
-console.log('=== AUTH ACCESS CARGADO CORRECTAMENTE ===');
+
 //Registro de usuario
 router.post('/registro', async (req, res) => {
-   console.log('=== LLEGÓ PETICIÓN DE REGISTRO ===');  // ← Agrega esta línea
-  const { dui, nombres, apellidos, fecha_nacimiento, telefono, email, password, rol } = req.body;
-  
   try {
+    const {
+      dui,
+      nombres,
+      apellidos,
+      fecha_nacimiento,
+      telefono,
+      email,
+      password,
+      rol
+    } = req.body;
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const query = `
-      INSERT INTO usuarios (dui, nombres, apellidos, fecha_nacimiento, telefono, email, password, rol)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, dui, nombres, apellidos, email, rol
-    `;
+    await Usuario.create({
+      dui,
+      nombres,
+      apellidos,
+      fecha_nacimiento,
+      telefono,
+      email: String(email).trim().toLowerCase(),
+      password: hashedPassword,
+      rol
+    });
 
-    const result = await pool.query(query, [
-      dui, nombres, apellidos, fecha_nacimiento, telefono, email, hashedPassword, rol || 'paciente'
-    ]);
-
-    console.log('=== INTENTANDO ENVIAR CORREO ===');
-    console.log('Email:', email);
-    console.log('Nombres:', nombres);
-    
-    try {
-      const resultado = await enviarCorreoRegistro(email, nombres);
-      console.log('Resultado del envío:', resultado);
-    } catch (errorCorreo) {
-      console.error('Error al enviar correo:', errorCorreo.message);
-    }
-
-    res.status(201).json({ message: 'Usuario registrado exitosamente', usuario: result.rows[0] });
+    return res.status(201).json({ message: 'Usuario creado' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al registrar usuario' });
+    return res.status(500).json({ error: 'Error al registrar usuario' });
   }
 });
 
 //Login
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  console.log('=== INICIO LOGIN ===');
-  console.log('Email:', email);
-  console.log('Password:', password);
-  
   try {
-    const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-    console.log('Usuario encontrado?', result.rows.length > 0);
-    
-    if (result.rows.length === 0) {
-      console.log('Usuario NO encontrado');
+    const { email, password } = req.body;
+
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    const user = await pool.query('SELECT * FROM usuarios WHERE email = $1', [normalizedEmail]);
+
+    console.log('LOGIN ATTEMPT:', { normalizedEmail, password });
+    console.log('USER FOUND:', user);
+
+    if (!user.rows.length) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
-    
-    const usuario = result.rows[0];
-    console.log('Hash en BD:', usuario.password);
-    
-    const validPassword = await bcrypt.compare(password, usuario.password);
-    console.log('Contraseña válida?', validPassword);
-    
-    if (!validPassword) {
-      console.log('Contraseña INCORRECTA');
+
+    const match = await bcrypt.compare(password, user.rows[0].password);
+    console.log('PASSWORD MATCH:', match);
+
+    if (!match) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
-    
-    console.log('Login exitoso para:', email);
-    
+
     const token = jwt.sign(
-      { id: usuario.id, email: usuario.email, rol: usuario.rol, nombres: usuario.nombres, apellidos: usuario.apellidos },
+      { id: user.rows[0].id, email: user.rows[0].email, rol: user.rows[0].rol },
       SECRET_KEY,
       { expiresIn: '24h' }
     );
-    
-    res.json({
+
+    return res.json({
       token,
       usuario: {
-        id: usuario.id,
-        dui: usuario.dui,
-        nombres: usuario.nombres,
-        apellidos: usuario.apellidos,
-        email: usuario.email,
-        rol: usuario.rol
+        id: user.rows[0].id,
+        email: user.rows[0].email,
+        rol: user.rows[0].rol
       }
     });
   } catch (error) {
-    console.error('Error en login:', error);
-    res.status(500).json({ error: 'Error al iniciar sesión' });
+    console.error('ERROR LOGIN:', error);
+    return res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
