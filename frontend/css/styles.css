@@ -1830,6 +1830,15 @@ input[type="date"]:focus {
   color: #080808;  
   font-weight: 600;
   transition: color 0.2s;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+}
+#logoutBtn:hover {
+  background-color: #f8f9fa;
+  color: #dc3545;
+}
+#logoutBtn:active {
+  transform: translateY(1px);
 }
 
 /* Opcional: color al pasar el ratón */
@@ -1868,19 +1877,14 @@ input[type="date"]:focus {
   transition: opacity 0.2s ease-in-out;
   opacity: 1;
 }
-
-/* Cuando una pestaña no está activa, la ocultamos sin espacio */
 .tab-content:not(.active) {
   display: none;
   opacity: 0;
 }
-
-/* Cuando se activa, la mostramos gradualmente */
 .tab-content.active {
   display: block;
   animation: fadeIn 0.2s ease-in-out;
 }
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
