@@ -46,3 +46,27 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
+
+
+// ...existing code...
+
+const frontendPath = path.join(__dirname, '../frontend');
+
+// Archivos estáticos del frontend
+app.use(express.static(frontendPath));
+
+// Ruta raíz
+app.get('/', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// Ruta exacta para login
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'login.html'));
+});
+
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'login.html'));
+});
+
+// ...existing code...
