@@ -1,5 +1,5 @@
-const API_URL = 'https://api-laboratorio-clinico.onrender.com';
-
+const API_URL = window.location.origin;
+const AUTH_URL = `${API_URL}/api/auth`;
 
 // Detectar token en URL
 document.addEventListener('DOMContentLoaded', () => {
@@ -32,7 +32,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     });
 
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetch(`${AUTH_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -124,7 +124,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     });
   
   try {
-    const response = await fetch(`${API_URL}/auth/registro`, {
+    const response = await fetch(`${AUTH_URL}/registro`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(usuarioData)
@@ -195,7 +195,7 @@ document.getElementById('forgotPassword').addEventListener('click', async () => 
 
 
   try {
-    const response = await fetch(`${API_URL}/auth/recuperar-password`, {
+    const response = await fetch(`${AUTH_URL}/recuperar-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
