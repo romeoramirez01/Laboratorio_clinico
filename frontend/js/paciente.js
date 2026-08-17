@@ -28,7 +28,18 @@ async function requestJson(path, options = {}) {
 }
 
 async function obtenerMiPerfil() {
-  return requestJson('/pacientes/mi-perfil');
+  const response = await fetch(`${API_BASE}/pacientes/mi-perfil`, {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('No se pudo cargar el perfil');
+  }
+
+  return response.json();
 }
 
 async function obtenerMisCitas() {
