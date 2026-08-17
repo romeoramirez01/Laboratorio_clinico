@@ -19,13 +19,16 @@
 
   
 </head>
-<body>
+<body data-tema="turquesa">
 <div class="dashboard-container">
   <!-- Barra superior profesional (igual a la que te gustó) -->
   <nav class="main-header navbar navbar-expand navbar-white navbar-light">
     <div class="container-fluid">
       <a href="#" class="navbar-brand">PANEL DE ADMINISTRACION</a>
       <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <span class="avatar-display" id="avatarDisplay">🐼</span>
+        </li>
         <li class="nav-item">
           <a class="nav-link" href="#" id="logoutBtn">Cerrar Sesión <i class="fas fa-sign-out-alt"></i></a>
         </li>
@@ -230,6 +233,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="js/personalizacion.js"></script>
   <script src="js/panel-admin.js"></script>
 </body>
 </html>

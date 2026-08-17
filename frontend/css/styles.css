@@ -1398,6 +1398,19 @@ input[type="date"]:focus {
     flex-wrap: wrap;
 }
 
+/* AVATAR Y PERSONALIZACION */
+.avatar-display {
+    font-size: 28px;
+    margin: 0 10px;
+    cursor: pointer;
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
+.avatar-display:hover {
+    transform: scale(1.1);
+}
+
 .contacto-telefono,
 .contacto-relacion {
     font-size: 13px;

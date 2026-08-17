@@ -18,12 +18,15 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 </head>
-<body>
+<body data-tema="turquesa">
   <div class="dashboard-container">
     <nav class="main-header navbar navbar-expand navbar-white navbar-light">
       <div class="container-fluid">
       <a href="#" class="navbar-brand">PANEL DEL DOCTOR</a>
       <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <span class="avatar-display" id="avatarDisplay">🐼</span>
+        </li>
         <li class="nav-item">
           <a class="nav-link" href="#" id="logoutBtn">Cerrar Sesión <i class="fas fa-sign-out-alt"></i></a>
         </li>
@@ -167,6 +170,7 @@
   </div>
 </div>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="js/personalizacion.js"></script>
   <script src="js/panel-doctor.js"></script>
 </body>
 </html>

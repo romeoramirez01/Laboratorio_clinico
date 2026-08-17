@@ -14,7 +14,7 @@
   <!-- Google Fonts Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body data-tema="turquesa">
 <div class="dashboard-container">
 
   <!-- BARRA SUPERIOR PROFESIONAL -->
@@ -22,6 +22,9 @@
     <div class="container-fluid">
       <a href="#" class="navbar-brand">PANEL DEL PACIENTE</a>
       <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <span class="avatar-display" id="avatarDisplay">🐼</span>
+        </li>
         <li class="nav-item">
           <a class="nav-link" href="#" id="logoutBtn">Cerrar Sesión <i class="fas fa-sign-out-alt"></i></a>
         </li>
@@ -178,6 +181,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="js/personalizacion.js"></script>
 <script src="js/panel-paciente.js"></script>
 
 </body>
