@@ -17,12 +17,16 @@ const adminRoutes = require('../routes/admin');
 const doctorRoutes = require('../routes/doctor');
 const pacienteRoutes = require('../routes/paciente');
 const citaRoutes = require('../routes/citas');
+const examenesRoutes = require('../routes/examenes');
+const signosVitalesRoutes = require('../routes/signosVitales');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/api/paciente', pacienteRoutes);
 app.use('/api/citas', citaRoutes);
+app.use('/api/examenes', examenesRoutes);
+app.use('/api/signos-vitales', signosVitalesRoutes);
 
 // Servir frontend
 const frontendPath = path.join(__dirname, '../frontend');

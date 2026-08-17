@@ -75,7 +75,7 @@ async function cargarCitas() {
 
 async function cargarExamenes() {
   try {
-    const data = await requestJson('/examenes');
+    const data = await requestJson('/examenes/catalogo');
     const tbody = document.getElementById('tablaExamenes');
     if (!tbody) return;
 
