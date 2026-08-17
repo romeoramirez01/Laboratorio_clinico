@@ -11,7 +11,6 @@ app.use(express.urlencoded({ extended: true }));
 
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
-app.use('/prueba', express.static(uploadsPath));
 
 const authRoutes = require('../routes/authAccess');
 const pacienteRoutes = require('../routes/pacientes');
@@ -20,6 +19,7 @@ const examenRoutes = require('../routes/examenes');
 const signosVitalesRoutes = require('../routes/signosVitales');
 const adminRoutes = require('../routes/admin');
 
+// Rutas API
 app.use('/api/auth', authRoutes);
 app.use('/api/pacientes', pacienteRoutes);
 app.use('/api/citas', citaRoutes);
@@ -27,24 +27,35 @@ app.use('/api/examenes', examenRoutes);
 app.use('/api/signos-vitales', signosVitalesRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Servir frontend
 const frontendPath = path.join(__dirname, '../frontend');
 app.use(express.static(frontendPath));
 
 app.get('/', (req, res) => {
-    res.redirect('/login.html');
+  res.redirect('/login.html');
 });
 
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'login.html'));
+  res.sendFile(path.join(frontendPath, 'login.html'));
 });
 
 app.get('/login.html', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'login.html'));
+  res.sendFile(path.join(frontendPath, 'login.html'));
+});
+
+// 404 JSON para rutas API
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Ruta API no encontrada' });
+});
+
+// 404 general para frontend
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(frontendPath, 'login.html'));
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
 
 

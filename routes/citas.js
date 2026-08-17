@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 
 router.get('/mias', async (req, res) => {
   try {
-    const pacienteId = req.query.id || req.headers['x-user-id'];
+    const pacienteId = req.query.id;
 
     if (!pacienteId) {
       return res.status(400).json({ error: 'Falta id del paciente' });

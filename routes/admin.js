@@ -42,7 +42,7 @@ router.post('/registrar-paciente', async (req, res) => {
 router.get('/pacientes', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT * 
       FROM usuarios
       WHERE rol = 'paciente'
       ORDER BY id DESC
@@ -52,6 +52,22 @@ router.get('/pacientes', async (req, res) => {
   } catch (error) {
     console.error('ERROR listar pacientes:', error);
     return res.status(500).json({ error: 'Error al cargar pacientes' });
+  }
+});
+
+// Obtener todos los usuarios
+router.get('/usuarios', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT *
+      FROM usuarios
+      ORDER BY id DESC
+    `);
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('ERROR listar usuarios:', error);
+    return res.status(500).json({ error: 'Error al cargar usuarios' });
   }
 });
 
