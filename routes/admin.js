@@ -1,333 +1,139 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const pool = require('../backend/database');
-const { verificarToken, verificarRol } = require('../middleware/auth');
-
 const router = express.Router();
+const pool = require('../backend/database');
 
-/// Registrar paciente (admin)
-router.post('/registrar-paciente', verificarToken, verificarRol(['admin']), async (req, res) => {
-  const { dui, nombres, apellidos, fecha_nacimiento, telefono, email, password, rol } = req.body;
-  
+// Registrar paciente
+router.post('/registrar-paciente', async (req, res) => {
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);   
+    const { dui, nombres, apellidos, fecha_nacimiento, telefono, email, password } = req.body;
+
+    if (!dui || !nombres || !apellidos || !fecha_nacimiento || !telefono || !email || !password) {
+      return res.status(400).json({ error: 'Faltan datos del paciente' });
+    }
+
+    const emailNormalizado = String(email).trim().toLowerCase();
+    const existe = await pool.query('SELECT id FROM usuarios WHERE email = $1', [emailNormalizado]);
+
+    if (existe.rows.length > 0) {
+      return res.status(409).json({ error: 'El paciente ya existe' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
     const result = await pool.query(
       `INSERT INTO usuarios (dui, nombres, apellidos, fecha_nacimiento, telefono, email, password, rol)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, dui, nombres, apellidos, email, rol`,
-      [dui, nombres, apellidos, fecha_nacimiento, telefono, email, hashedPassword, rol || 'paciente']
-    ); 
-    
-    // --- ENVÍO DE CORREO ---
-    const { enviarCorreoRegistro } = require('../backend/services/emailService');
-    await enviarCorreoRegistro(email, nombres).catch(console.error);
-    // -----------------------
-    
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al registrar paciente' });
-  }
-});
-
-//Obtener todos los pacientes
-router.get('/pacientes', verificarToken, verificarRol(['admin']), async (req, res) => {
-  const { busqueda } = req.query;
-  
-  try {
-    let query = 'SELECT id, dui, nombres, apellidos, email, telefono, created_at FROM usuarios WHERE rol = $1';
-    let params = ['paciente'];
-    
-    if (busqueda) {
-      query += ' AND (dui ILIKE $2 OR nombres ILIKE $2 OR apellidos ILIKE $2 OR email ILIKE $2)';
-      params.push(`%${busqueda}%`);
-    }   
-    query += ' ORDER BY nombres ASC';
-    const result = await pool.query(query, params);
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener pacientes' });
-  }
-});
-
-
-//Obtener un paciente por ID
-router.get('/paciente/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-    try {
-        const result = await pool.query(
-            'SELECT id, dui, nombres, apellidos, telefono, email FROM usuarios WHERE id = $1 AND rol = $2',
-            [req.params.id, 'paciente']
-        );
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Paciente no encontrado' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al obtener paciente' });
-    }
-});
-
-
-
-//Actualizar paciente
-router.put('/paciente/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-    const { nombres, apellidos, telefono, email } = req.body;
-    
-    try {
-        const result = await pool.query(
-            `UPDATE usuarios 
-             SET nombres = $1, apellidos = $2, telefono = $3, email = $4
-             WHERE id = $5 AND rol = $6
-             RETURNING id, dui, nombres, apellidos, email, telefono`,
-            [nombres, apellidos, telefono, email, req.params.id, 'paciente']
-        );
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Paciente no encontrado' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al actualizar paciente' });
-    }
-});
-
-
-
-//Eliminar paciente
-router.delete('/pacientes/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM usuarios WHERE id = $1 AND rol = $2 RETURNING *', 
-      [req.params.id, 'paciente']);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Paciente no encontrado' });
-    }
-    res.json({ message: 'Paciente eliminado' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar paciente' });
-  }
-});
-
-
-
-//Obtener todos los examenes
-router.get('/examenes', verificarToken, verificarRol(['admin']), async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM catalogo_examenes ORDER BY nombre');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al obtener exámenes' });
-    }
-})
-
-//Obtener un examen por ID
-router.get('/examenes/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-    try {
-        const result = await pool.query(
-            'SELECT * FROM catalogo_examenes WHERE id = $1',
-            [req.params.id]
-        );
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Examen no encontrado' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al obtener examen' });
-    }
-});
-
-//Crear examen
-router.post('/examenes', verificarToken, verificarRol(['admin']), async (req, res) => {
-    const { nombre, precio, tiempo_entrega } = req.body;
-    
-    try {
-        const result = await pool.query(
-            'INSERT INTO catalogo_examenes (nombre, precio, tiempo_entrega) VALUES ($1, $2, $3) RETURNING *',
-            [nombre, precio, tiempo_entrega]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al crear examen' });
-    }
-});
-
-//Actualizar examen
-router.put('/examenes/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-    const { nombre, precio, tiempo_entrega } = req.body;
-    
-    try {
-        const result = await pool.query(
-            `UPDATE catalogo_examenes 
-             SET nombre = $1, precio = $2, tiempo_entrega = $3
-             WHERE id = $4
-             RETURNING *`,
-            [nombre, precio, tiempo_entrega, req.params.id]
-        );
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Examen no encontrado' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al actualizar examen' });
-    }
-});
-
-//Eliminar examen
-router.delete('/examenes/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-    try {
-        const result = await pool.query('DELETE FROM catalogo_examenes WHERE id = $1 RETURNING *', [req.params.id]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Examen no encontrado' });
-        }
-        res.json({ message: 'Examen eliminado' });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al eliminar examen' });
-    }
-});
-
-
-//Obtener todos los usuarios
-router.get('/usuarios', verificarToken, verificarRol(['admin']), async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT id, dui, nombres, apellidos, email, telefono, rol, created_at FROM usuarios ORDER BY rol, nombres'
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'paciente')
+       RETURNING *`,
+      [dui, nombres, apellidos, fecha_nacimiento, telefono, emailNormalizado, passwordHash]
     );
-    res.json(result.rows);
+
+    return res.status(201).json({
+      message: 'Paciente registrado correctamente',
+      paciente: result.rows[0]
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener usuarios' });
+    console.error('ERROR registrar-paciente:', error);
+    return res.status(500).json({ error: 'Error al registrar paciente' });
   }
 });
 
+// Obtener todos los pacientes
+router.get('/pacientes', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT *
+      FROM usuarios
+      WHERE rol = 'paciente'
+      ORDER BY id DESC
+    `);
 
-//Obtener un usuario por ID
-router.get('/usuarios/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-  console.log('=== GET USUARIO POR ID ===');
-    console.log('ID solicitado:', req.params.id);
-
-    try {
-        const result = await pool.query(
-            'SELECT id, dui, nombres, apellidos, telefono, email, rol FROM usuarios WHERE id = $1',
-            [req.params.id]
-        );
-
-        console.log('Resultado encontrado:', result.rows.length > 0);
-        console.log('Datos:', result.rows[0]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-      console.error('Error en GET /usuarios/:id:', error);
-        res.status(500).json({ error: 'Error al obtener usuario' });
-    }
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('ERROR listar pacientes:', error);
+    return res.status(500).json({ error: 'Error al cargar pacientes' });
+  }
 });
 
-
-//Actualizar usuario
-router.put('/usuarios/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
-  const { nombres, apellidos, telefono, email, rol } = req.body;
-  
+// Obtener todos los doctores
+router.get('/doctores', async (req, res) => {
   try {
+    const result = await pool.query(`
+      SELECT *
+      FROM usuarios
+      WHERE rol = 'doctor'
+      ORDER BY id DESC
+    `);
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('ERROR listar doctores:', error);
+    return res.status(500).json({ error: 'Error al cargar doctores' });
+  }
+});
+
+// Obtener todos los exámenes
+router.get('/examenes', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT *
+      FROM catalogo_examenes
+      ORDER BY id DESC
+    `);
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('ERROR listar exámenes:', error);
+    return res.status(500).json({ error: 'Error al cargar exámenes' });
+  }
+});
+
+// Registrar examen
+router.post('/registrar-examen', async (req, res) => {
+  try {
+    const { nombre, precio, tiempo_entrega } = req.body;
+
+    if (!nombre || !precio || !tiempo_entrega) {
+      return res.status(400).json({ error: 'Faltan datos del examen' });
+    }
+
     const result = await pool.query(
-      `UPDATE usuarios 
-       SET nombres = $1, apellidos = $2, telefono = $3, email = $4, rol = $5
-       WHERE id = $6 RETURNING id, dui, nombres, apellidos, email, rol`,
-      [nombres, apellidos, telefono, email, rol, req.params.id]
+      `INSERT INTO catalogo_examenes (nombre, precio, tiempo_entrega)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [nombre, precio, tiempo_entrega]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    res.json(result.rows[0]);
+
+    return res.status(201).json({
+      message: 'Examen registrado correctamente',
+      examen: result.rows[0]
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar usuario' });
+    console.error('ERROR registrar-examen:', error);
+    return res.status(500).json({ error: 'Error al registrar examen' });
   }
 });
 
-//Eliminar usuario
-router.delete('/usuarios/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
+// Reportes
+router.get('/reportes', async (req, res) => {
   try {
-    const result = await pool.query('DELETE FROM usuarios WHERE id = $1 RETURNING *', [req.params.id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    res.json({ message: 'Usuario eliminado' });
+    const [pacientes, citas, examenes, doctores] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS total FROM usuarios WHERE rol = 'paciente'`),
+      pool.query(`SELECT COUNT(*)::int AS total FROM citas`),
+      pool.query(`SELECT COUNT(*)::int AS total FROM catalogo_examenes`),
+      pool.query(`SELECT COUNT(*)::int AS total FROM usuarios WHERE rol = 'doctor'`)
+    ]);
+
+    return res.json({
+      pacientes: pacientes.rows[0].total,
+      citas: citas.rows[0].total,
+      examenes: examenes.rows[0].total,
+      doctores: doctores.rows[0].total
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar usuario' });
+    console.error('ERROR reportes:', error);
+    return res.status(500).json({ error: 'Error al cargar reportes' });
   }
-});
-
-
-// REPORTES ESTADÍSTICOS
-// 1. Obtener resumen: exámenes diarios y pacientes atendidos en un período
-router.get('/reportes/resumen', verificarToken, verificarRol(['admin']), async (req, res) => {
-    try {
-        const { fechaInicio, fechaFin } = req.query;
-        if (!fechaInicio || !fechaFin) {
-            return res.status(400).json({ error: 'Se requieren fechas de inicio y fin' });
-        }
-
-        // Exámenes completados en el período
-        const examenesQuery = `
-            SELECT COUNT(*) as total
-            FROM solicitud_examenes
-            WHERE estado = 'completado'
-            AND DATE(fecha_solicitud) BETWEEN $1 AND $2
-        `;
-        const examenesResult = await pool.query(examenesQuery, [fechaInicio, fechaFin]);
-        const totalExamenes = parseInt(examenesResult.rows[0].total);
-
-        // Pacientes únicos atendidos en el período
-        const pacientesQuery = `
-            SELECT COUNT(DISTINCT paciente_id) as total
-            FROM solicitud_examenes
-            WHERE estado = 'completado'
-            AND DATE(fecha_solicitud) BETWEEN $1 AND $2
-        `;
-        const pacientesResult = await pool.query(pacientesQuery, [fechaInicio, fechaFin]);
-        const totalPacientes = parseInt(pacientesResult.rows[0].total);
-
-        res.json({
-            examenes_diarios: totalExamenes,
-            pacientes_atendidos: totalPacientes
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener resumen de reportes' });
-    }
-});
-
-// 2. Obtener exámenes más solicitados
-router.get('/reportes/top-examenes', verificarToken, verificarRol(['admin']), async (req, res) => {
-    try {
-        const { fechaInicio, fechaFin, limite = 5 } = req.query;
-        if (!fechaInicio || !fechaFin) {
-            return res.status(400).json({ error: 'Se requieren fechas de inicio y fin' });
-        }
-
-        const query = `
-            SELECT c.nombre as examen, COUNT(s.id) as total
-            FROM solicitud_examenes s
-            JOIN catalogo_examenes c ON s.examen_id = c.id
-            WHERE s.estado = 'completado'
-            AND DATE(s.fecha_solicitud) BETWEEN $1 AND $2
-            GROUP BY c.id, c.nombre
-            ORDER BY total DESC
-        `;
-        const result = await pool.query(query, [fechaInicio, fechaFin]);
-        res.json(result.rows);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener top exámenes' });
-    }
 });
 
 module.exports = router;

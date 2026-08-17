@@ -1,5 +1,5 @@
 //frontend
-const API_URL = 'https://api-laboratorio-clinico.onrender.com';
+const API_URL = window.location.origin;
 
 //Verificar autenticación
 const token = localStorage.getItem('token');

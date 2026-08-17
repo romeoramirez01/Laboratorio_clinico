@@ -1,88 +1,113 @@
 const express = require('express');
-const pool = require('../backend/database');
-const { verificarToken } = require('../middleware/auth');
-const { enviarCorreoCitaAgendada, enviarCorreoCitaCancelada } = require('../backend/services/emailService');
 const router = express.Router();
+const pool = require('../backend/database');
 
-//Agendar cita
-router.post('/agendar', verificarToken, async (req, res) => {
-  const { fecha, hora, motivo } = req.body;
-  
+router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      `INSERT INTO citas (paciente_id, fecha, hora, motivo)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [req.usuario.id, fecha, hora, motivo]
-    );
+    const result = await pool.query(`
+      SELECT c.*, u.nombres, u.apellidos
+      FROM citas c
+      LEFT JOIN usuarios u ON u.id = c.paciente_id
+      ORDER BY c.id DESC
+    `);
 
-     // Obtener datos del paciente para enviar correo
-    const paciente = await pool.query(
-      'SELECT email, nombres FROM usuarios WHERE id = $1',
-      [req.usuario.id]
-    );
-    
-    // Enviar correo de confirmación (no bloquear si falla)
-    enviarCorreoCitaAgendada(
-      paciente.rows[0].email,
-      paciente.rows[0].nombres,
-      fecha,
-      hora,
-      motivo
-    ).catch(console.error);
-
-    res.status(201).json(result.rows[0]);
+    return res.json(result.rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al agendar cita' });
+    console.error('ERROR listar citas:', error);
+    return res.status(500).json({ error: 'Error al cargar citas' });
   }
 });
 
-//Obtener mis citas
-router.get('/mis-citas', verificarToken, async (req, res) => {
+router.get('/mias', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM citas WHERE paciente_id = $1 ORDER BY fecha DESC',
-      [req.usuario.id]
-    );
-    res.json(result.rows);
+    const pacienteId = req.query.id || req.headers['x-user-id'];
+
+    if (!pacienteId) {
+      return res.status(400).json({ error: 'Falta id del paciente' });
+    }
+
+    const result = await pool.query(`
+      SELECT *
+      FROM citas
+      WHERE paciente_id = $1
+      ORDER BY fecha DESC, hora DESC
+    `, [pacienteId]);
+
+    return res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener citas' });
+    console.error('ERROR citas del paciente:', error);
+    return res.status(500).json({ error: 'Error al cargar citas del paciente' });
   }
 });
 
-//Eliminar cita
-router.delete('/:id', verificarToken, async (req, res) => {
+router.get('/agenda', async (req, res) => {
   try {
+    const result = await pool.query(`
+      SELECT c.*, u.nombres, u.apellidos
+      FROM citas c
+      LEFT JOIN usuarios u ON u.id = c.paciente_id
+      ORDER BY c.fecha, c.hora
+    `);
 
-    // Obtener datos de la cita antes de eliminarla
-    const cita = await pool.query(
-      'SELECT c.*, u.email, u.nombres FROM citas c JOIN usuarios u ON c.paciente_id = u.id WHERE c.id = $1 AND c.paciente_id = $2',
-      [req.params.id, req.usuario.id]
-    );
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('ERROR agenda doctor:', error);
+    return res.status(500).json({ error: 'Error al cargar agenda' });
+  }
+});
+
+router.post('/', async (req, res) => {
+  try {
+    const { paciente_id, fecha, hora, motivo } = req.body;
+
+    if (!paciente_id || !fecha || !hora || !motivo) {
+      return res.status(400).json({ error: 'Faltan datos de la cita' });
+    }
 
     const result = await pool.query(
-      'DELETE FROM citas WHERE id = $1 AND paciente_id = $2 RETURNING *',
-      [req.params.id, req.usuario.id]
+      `INSERT INTO citas (paciente_id, fecha, hora, motivo, estado)
+       VALUES ($1, $2, $3, $4, 'pendiente')
+       RETURNING *`,
+      [paciente_id, fecha, hora, motivo]
     );
-    
+
+    return res.status(201).json({
+      message: 'Cita creada correctamente',
+      cita: result.rows[0]
+    });
+  } catch (error) {
+    console.error('ERROR crear cita:', error);
+    return res.status(500).json({ error: 'Error al crear cita' });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fecha, hora, motivo, estado } = req.body;
+
+    const result = await pool.query(
+      `UPDATE citas
+       SET fecha = COALESCE($1, fecha),
+           hora = COALESCE($2, hora),
+           motivo = COALESCE($3, motivo),
+           estado = COALESCE($4, estado)
+       WHERE id = $5
+       RETURNING *`,
+      [fecha, hora, motivo, estado, id]
+    );
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Cita no encontrada' });
     }
 
-    
-    // Enviar correo de cancelación
-    if (cita.rows.length > 0) {
-      enviarCorreoCitaCancelada(
-        cita.rows[0].email,
-        cita.rows[0].nombres,
-        cita.rows[0].fecha,
-        cita.rows[0].hora
-      ).catch(console.error);
-    }
-
-    res.json({ message: 'Cita eliminada' });
+    return res.json({
+      message: 'Cita actualizada correctamente',
+      cita: result.rows[0]
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar cita' });
+    console.error('ERROR actualizar cita:', error);
+    return res.status(500).json({ error: 'Error al actualizar cita' });
   }
 });
 

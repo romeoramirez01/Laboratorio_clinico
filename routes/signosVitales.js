@@ -1,59 +1,75 @@
 const express = require('express');
-const pool = require('../backend/database');
-const { verificarToken, verificarRol } = require('../middleware/auth');
-
 const router = express.Router();
+const pool = require('../backend/database');
 
-//Registrar signos vitales
-router.post('/registrar', verificarToken, verificarRol(['doctor', 'admin']), async (req, res) => {
-  const { dui, presion_arterial, frecuencia_cardiaca, temperatura, peso, altura, observaciones } = req.body;
-  
+router.get('/', async (req, res) => {
   try {
-    const paciente = await pool.query('SELECT id FROM usuarios WHERE dui = $1', [dui]);
-    if (paciente.rows.length === 0) {
-      return res.status(404).json({ error: 'Paciente no encontrado' });
+    const result = await pool.query(`
+      SELECT *
+      FROM signos_vitales
+      ORDER BY fecha_registro DESC
+    `);
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('ERROR signos vitales:', error);
+    return res.status(500).json({ error: 'Error al cargar signos vitales' });
+  }
+});
+
+router.get('/mios', async (req, res) => {
+  try {
+    const pacienteId = req.query.id || req.headers['x-user-id'];
+
+    if (!pacienteId) {
+      return res.status(400).json({ error: 'Falta id del paciente' });
     }
-    
-    const result = await pool.query(
-      `INSERT INTO signos_vitales (paciente_id, presion_arterial, frecuencia_cardiaca, temperatura, peso, altura, observaciones)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [paciente.rows[0].id, presion_arterial, frecuencia_cardiaca, temperatura, peso, altura, observaciones]
-    );
-    
-    res.status(201).json(result.rows[0]);
+
+    const result = await pool.query(`
+      SELECT *
+      FROM signos_vitales
+      WHERE paciente_id = $1
+      ORDER BY fecha_registro DESC
+    `, [pacienteId]);
+
+    return res.json(result.rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al registrar signos vitales' });
+    console.error('ERROR signos del paciente:', error);
+    return res.status(500).json({ error: 'Error al cargar signos vitales' });
   }
 });
 
-//Obtener mis signos vitales (paciente)
-router.get('/mis-signos', verificarToken, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM signos_vitales WHERE paciente_id = $1 ORDER BY fecha_registro DESC LIMIT 1',
-      [req.usuario.id]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener signos vitales' });
-  }
-});
+    const {
+      paciente_id,
+      presion_arterial,
+      frecuencia_cardiaca,
+      temperatura,
+      peso,
+      altura,
+      observaciones
+    } = req.body;
 
-//Obtener todos los signos vitales (doctor)
-router.get('/todos', verificarToken, verificarRol(['doctor', 'admin']), async (req, res) => {
-  try {
+    if (!paciente_id) {
+      return res.status(400).json({ error: 'Falta paciente_id' });
+    }
+
     const result = await pool.query(
-      `SELECT s.*, u.nombres as paciente_nombre, u.apellidos as paciente_apellidos
-       FROM signos_vitales s
-       JOIN usuarios u ON s.paciente_id = u.id
-       ORDER BY s.fecha_registro DESC
-       LIMIT 50`
+      `INSERT INTO signos_vitales (
+        paciente_id, presion_arterial, frecuencia_cardiaca, temperatura, peso, altura, observaciones
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *`,
+      [paciente_id, presion_arterial, frecuencia_cardiaca, temperatura, peso, altura, observaciones]
     );
-    res.json(result.rows);
+
+    return res.status(201).json({
+      message: 'Signos vitales registrados correctamente',
+      signos: result.rows[0]
+    });
   } catch (error) {
-    console.error('Error al obtener signos vitales:', error);
-    res.status(500).json({ error: 'Error al obtener signos vitales' });
+    console.error('ERROR crear signos vitales:', error);
+    return res.status(500).json({ error: 'Error al guardar signos vitales' });
   }
 });
 
