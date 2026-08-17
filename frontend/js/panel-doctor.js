@@ -32,33 +32,15 @@ async function requestJson(path, options = {}) {
 }
 
 async function cargarPacientes() {
-  try {
-    const data = await requestJson('/pacientes');
-    const tbody = document.getElementById('tablaPacientes');
-    if (!tbody) return;
-
-    if (data.length > 0) {
-      tbody.innerHTML = data.map(p => `
-        <tr>
-          <td>${p.id}</td>
-          <td>${p.nombres}</td>
-          <td>${p.apellidos}</td>
-          <td>${p.email}</td>
-          <td>${p.telefono}</td>
-        </tr>
-      `).join('');
-    } else {
-      tbody.innerHTML = '<tr><td colspan="5">No hay pacientes</td></tr>';
+  const response = await fetch(`${API_URL}/doctor/pacientes`, {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
     }
-  } catch (error) {
-    console.error(error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'No se pudieron cargar los pacientes',
-      confirmButtonColor: '#e53e3e'
-    });
-  }
+  });
+
+  const data = await response.json();
+  return data;
 }
 
 async function cargarCitas() {

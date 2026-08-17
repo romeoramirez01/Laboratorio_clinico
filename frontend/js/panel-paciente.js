@@ -2,7 +2,7 @@ const API_URL = `${window.location.origin}/api`;
 const token = localStorage.getItem('token');
 const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
 
-if (!token || usuario.rol !== 'paciente') {
+if (!token || !usuario.id || usuario.rol !== 'paciente') {
   window.location.href = 'login.html';
 }
 
@@ -18,6 +18,7 @@ async function requestJson(path, options = {}) {
 
   const text = await response.text();
   let data = {};
+
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
@@ -33,7 +34,7 @@ async function requestJson(path, options = {}) {
 
 async function cargarPerfil() {
   try {
-    const data = await requestJson('/pacientes/mi-perfil');
+    const data = await requestJson('/paciente/mi-perfil?id=' + usuario.id);
     const perfilNombre = document.getElementById('perfilNombre');
     const perfilEmail = document.getElementById('perfilEmail');
 
@@ -52,7 +53,7 @@ async function cargarPerfil() {
 
 async function cargarMisCitas() {
   try {
-    const data = await requestJson(`/citas/mias?id=${usuario.id}`);
+    const data = await requestJson(`/paciente/mis-citas?id=${usuario.id}`);
     const tbody = document.getElementById('tablaMisCitas');
 
     if (!tbody) return;
@@ -83,7 +84,7 @@ async function cargarMisCitas() {
 
 async function cargarMisExamenes() {
   try {
-    const data = await requestJson(`/examenes/mios?id=${usuario.id}`);
+    const data = await requestJson(`/paciente/mis-examenes?id=${usuario.id}`);
     const tbody = document.getElementById('tablaMisExamenes');
 
     if (!tbody) return;
@@ -92,8 +93,8 @@ async function cargarMisExamenes() {
       tbody.innerHTML = data.map(e => `
         <tr>
           <td>${e.id}</td>
-          <td>${e.nombre}</td>
-          <td>${e.precio}</td>
+          <td>${e.nombre || 'Examen'}</td>
+          <td>$${e.precio || 0}</td>
           <td>${e.tiempo_entrega || 'N/A'}</td>
         </tr>
       `).join('');
@@ -124,10 +125,20 @@ if (formCita) {
     };
 
     try {
-      const data = await requestJson('/citas', {
+      const response = await fetch(`${API_URL}/citas`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
+
+      const data = await response.json().catch(() => ({ message: 'Cita registrada' }));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo registrar la cita');
+      }
 
       Swal.fire({
         icon: 'success',
