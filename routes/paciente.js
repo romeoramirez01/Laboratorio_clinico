@@ -5,11 +5,15 @@ const pool = require('../backend/database');
 router.get('/mi-perfil', async (req, res) => {
   try {
     const id = req.query.id;
+
     if (!id) {
       return res.status(400).json({ error: 'Falta id del paciente' });
     }
 
-    const result = await pool.query('SELECT * FROM usuarios WHERE id = $1', [id]);
+    const result = await pool.query(
+      'SELECT * FROM usuarios WHERE id = $1',
+      [id]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
@@ -25,11 +29,15 @@ router.get('/mi-perfil', async (req, res) => {
 router.get('/mis-citas', async (req, res) => {
   try {
     const id = req.query.id;
+
     if (!id) {
       return res.status(400).json({ error: 'Falta id del paciente' });
     }
 
-    const result = await pool.query('SELECT * FROM citas WHERE paciente_id = $1 ORDER BY fecha DESC, hora DESC', [id]);
+    const result = await pool.query(
+      'SELECT * FROM citas WHERE paciente_id = $1 ORDER BY fecha DESC, hora DESC',
+      [id]
+    );
 
     return res.json(result.rows);
   } catch (error) {
@@ -41,6 +49,7 @@ router.get('/mis-citas', async (req, res) => {
 router.get('/mis-examenes', async (req, res) => {
   try {
     const id = req.query.id;
+
     if (!id) {
       return res.status(400).json({ error: 'Falta id del paciente' });
     }
@@ -62,6 +71,3 @@ router.get('/mis-examenes', async (req, res) => {
 });
 
 module.exports = router;
-
-const API_URL = `${window.location.origin}/api`;
-fetch(`${API_URL}/paciente/mis-citas?id=1`)
