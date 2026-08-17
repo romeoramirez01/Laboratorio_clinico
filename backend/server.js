@@ -1,7 +1,10 @@
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+
+// Importar pool de base de datos para asegurar inicialización
+const pool = require('./database');
 
 const app = express();
 

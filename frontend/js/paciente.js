@@ -1,6 +1,3 @@
-const express = require('express');
-const pool = require('../backend/database');
-const { verificarToken, verificarRol } = require('../middleware/auth');
 const API_BASE = `${window.location.origin}/api`;
 
 async function requestJson(path, options = {}) {

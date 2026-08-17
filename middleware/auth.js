@@ -1,7 +1,7 @@
 
 const jwt = require('jsonwebtoken');
 
-const SECRET_KEY = process.env.SECRET_KEY || 'Seguridad';
+const JWT_SECRET = process.env.JWT_SECRET || 'laboratorio-secret-dev';
 
 //Verificacion del token
 const verificarToken = (req, res, next) => {
@@ -12,7 +12,7 @@ const verificarToken = (req, res, next) => {
   }
   
   try {
-    const decoded = jwt.verify(token.split(' ')[1], SECRET_KEY);
+    const decoded = jwt.verify(token.split(' ')[1], JWT_SECRET);
     req.usuario = decoded;
     next();
   } catch (error) {
@@ -30,4 +30,4 @@ const verificarRol = (rolesPermitidos) => {
   };
 };
 
-module.exports = { verificarToken, verificarRol, SECRET_KEY };
+module.exports = { verificarToken, verificarRol, JWT_SECRET };
